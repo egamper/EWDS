@@ -1,0 +1,248 @@
+﻿<script language="vbscript">   
+	
+	Set objWSHShell = CreateObject("Wscript.Shell")
+	'Set objShell = CreateObject("Shell.Application")
+	Set objOpenADS = GetObject("LDAP:") 'https://www.deploymentresearch.com/adding-adsi-support-for-winpe-10/
+	Set objFSO = CreateObject("Scripting.FileSystemObject")
+	Set objDictionary = CreateObject("Scripting.Dictionary")
+	Set objWSHNetwork = CreateObject("WScript.Network")
+
+	strScriptFolder = objFSO.getabsolutepathname(".") & "\"
+	strDNSDomain = ""
+	strDNSServer = ""
+	strPath = ""
+	strDriverPath= ""
+	strUser = ""
+	strPassword = ""
+	strComputerName = ""
+	strOS = ""
+	strOU = ""
+	strWMIModel = ""
+	strDrvWMIModel = ""
+	strWMIManufacturer = ""
+	strSerialNumber = ""
+	
+	Sub Window_onLoad
+		strDPIsettings = objWSHShell.regread ("HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics\AppliedDPI")
+		window.resizeTo 600/96*strDPIsettings,600/96*strDPIsettings
+		
+		On Error Resume Next
+		Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+		Set colNetCards = objWMIService.ExecQuery("Select * From Win32_NetworkAdapterConfiguration Where IPEnabled = True")
+		For Each objNetCard In colNetCards
+			If strDNSDomain = "" And objNetCard.DNSDomain <> "" Then strDNSDomain = objNetCard.DNSDomain
+			If strDNSServer = "" And objNetCard.DNSServerSearchOrder(0) <> "" Then strDNSServer = CStr(objNetCard.DNSServerSearchOrder(0))
+		Next
+		
+		Set colWMI = objWMIService.ExecQuery("select Manufacturer, Model from Win32_Computersystem")
+		For Each objcolWMI In colWMI
+			strWMIModel = Trim(objcolWMI.Model)
+			
+			strDrvWMIModel = strWMIModel
+			strDrvWMIModel = LCase(Replace(strDrvWMIModel, " ", "-"))
+			strDrvWMIModel = LCase(Replace(strDrvWMIModel, "/", "-"))
+			strDrvWMIModel = LCase(Replace(strDrvWMIModel, "\", "-"))
+			strDrvWMIModel = LCase(Replace(strDrvWMIModel, ":", "-"))
+			strWMIManufacturer = Trim(objcolWMI.Manufacturer)
+		Next
+		
+		set objWBEMLocator = createobject("WbemScripting.SWbemLocator")
+		set objWBEMServer = objWBEMLocator.ConnectServer("localhost")
+		Set colWMI = objWBEMServer.ExecQuery("select SerialNumber from Win32_SystemEnclosure") 
+		For Each objcolWMI in colWMI
+			strSerialNumber = trim(objcolWMI.SerialNumber)
+		Next
+		On Error GoTo 0
+		
+		WriteOutput ("Manufacturer:" & strWMIManufacturer)
+		WriteOutput ("Model:" & strDrvWMIModel)
+		WriteOutput ("SN:" & strSerialNumber)
+		WriteOutput ("DNS Domain:" & strDNSDomain)
+		WriteOutput ("DNS Server:" & strDNSServer)
+	End Sub
+	
+	Sub Login
+		strUser = username.value
+		strPassword = password.value
+		
+		On Error resume next 'Check AD login
+		
+		Set domain = objOpenADS.OpenDSObject("LDAP://" & strDNSDomain, strUser & "@" & strDNSDomain, strPassword, 0)
+		If (Err.Number <> 0 ) Then
+			WriteOutput ("AD login error: " & Err.Number)
+		else
+			WriteOutput ("AD login OK")
+		
+			'Create driver model folder
+			'strPath = "\\" & strDNSDomain & "\SYSVOL\" & strDNSDomain & "\scripts\EWDS\"
+			strPath = "\\" & strDNSDomain & "\DFS\software\EWDS\"
+			strDriverPath= strPath & "Drivers\"
+
+			'WriteOutput ("Try monting " & "\\" & strDNSDomain & "\SYSVOL")
+			'objWSHNetwork.MapNetworkDrive "n:", "\\" & strDNSDomain & "\SYSVOL" & strDNSDomain, false, strUser, strPassword
+			'WriteOutput ("OK")
+			
+			WriteOutput ("Try monting " & "\\" & strDNSDomain & "\DFS\software")
+			objWSHNetwork.MapNetworkDrive "m:", "\\" & strDNSDomain & "\DFS\software", false, strUser, strPassword
+			WriteOutput ("OK")			
+
+			'objWSHShell.Run "cmd.exe /c NET USE I: \\" & strDNSDomain & "\SYSVOL\" & strDNSDomain & "\scripts\EWDS /USER:" & strUser & "@" & strDNSDomain & " " & strPassword, 0, true
+			'objWSHShell.Run "cmd.exe /c NET USE J: \\" & strDNSDomain & "\DFS\software /USER:" & strUser & "@" & strDNSDomain & " " & strPassword, 0, true
+	
+			if strDrvWMIModel <> "" then 
+				WriteOutput ("Create " & strDriverPath & strDrvWMIModel)
+				objFSO.CreateFolder strDriverPath
+				objFSO.CreateFolder strDriverPath & strDrvWMIModel
+				objFSO.CreateFolder strDriverPath & strDrvWMIModel & "\x64"
+				objFSO.CreateFolder strDriverPath & strDrvWMIModel & "\x86"
+			end if
+			
+			'Load OS
+			Set objfiletoread = objFSO.getfile(strPath & "EWDS.ini" )
+			Set objtextstream = objfiletoread.openastextstream
+			
+			For Each objOption in OS.Options
+				objOption.RemoveNode
+			Next
+		
+			do while not objtextstream.atendofstream
+				strLocLine = objtextstream.readline
+				if strLocLine <> "" then 
+					strLocLine = replace(strLocLine,"###","#")
+					strLocLine = replace(strLocLine,"##","#")
+					Set objOption = Document.createElement("OPTION")
+					objOption.Text = split(strLocLine,"#")(0)
+					objOption.Value = split(strLocLine,"#")(0)
+					objDictionary.Add split(strLocLine,"#")(0), strLocLine
+					OS.Add(objOption)
+				end if
+			loop
+			ListName
+		End If
+		On Error GoTo 0
+	End Sub
+		
+	Sub ListName
+		strOS = OS.Value
+		strOU = (split(objDictionary(strOS),"#")(1))
+		strLDAP = "LDAP://" & strDNSDomain & "/" & strOU & ",DC=" & replace(strDNSDomain,".",",DC=")
+		
+		On Error resume next
+		Set objOU = objOpenADS.OpenDSObject(strLDAP, strUser & "@" & strDNSDomain, strPassword, 0)
+		If (Err.Number <> 0 ) Then
+			For Each objOption in ComputerName.Options
+				objOption.RemoveNode
+			Next
+			WriteOutput ("OU not found error: " & Err.Number)
+		else
+			WriteOutput ("OU OK")
+			For Each objOption in ComputerName.Options
+				objOption.RemoveNode
+			Next
+			
+			'Load ComputerName
+			Set objOption = Document.createElement("OPTION") 'first nul line
+			objOption.Text = ""
+			objOption.Value = ""
+			ComputerName.Add(objOption)
+			ComputerName.Value = ""
+		
+			For each obj in objOU
+				if Left(obj.Name, 3) = "CN=" Then
+					Set objOption = Document.createElement("OPTION")
+					objOption.Text = obj.cn
+					objOption.Value = obj.cn
+					ComputerName.Add(objOption)
+					
+					'Autoselect device name
+					if strSerialNumber <> "" then 
+						if obj.serialNumber = strSerialNumber then 
+							ComputerName.Value = obj.cn
+						end if 
+					end if 
+					
+				end if			
+			Next
+		end if
+		
+		On Error GoTo 0
+	End Sub
+	
+	Sub Install
+		
+		strComputerName = ComputerName.Value
+		
+		if (strOS <> "" and strComputerName <> "") then 
+			FileTemplate = split(objDictionary(strOS),"#")(2)
+			FileCustom = "x:\Unattend.xml"
+			objFSO.CopyFile FileTemplate, FileCustom, true
+			
+			Set objFile = objFSO.OpenTextFile(FileCustom, 1)
+			TXTFile = objFile.ReadAll
+			TXTFile = replace(TXTFile, "%OU%", strOU)
+			TXTFile = replace(TXTFile, "%USERDOMAIN%", strDNSDomain)
+			TXTFile = replace(TXTFile, "%USERNAME%", strUser)
+			TXTFile = replace(TXTFile, "%USERPASSWORD%", strPassword)
+			TXTFile = replace(TXTFile, "%ADMINPASSWORD%", "pa$$w0rd")
+			TXTFile = replace(TXTFile, "%DOMAIN%", strDNSDomain)
+			TXTFile = replace(TXTFile, "%DNSDOMAIN%", strDNSDomain)
+			TXTFile = replace(TXTFile, "%COMPUTERNAME%", strComputerName)
+			TXTFile = replace(TXTFile, "%MODEL%", strDrvWMIModel)
+			
+			Set objFile = objFSO.OpenTextFile(FileCustom, 2, True)
+			objFile.write TXTFile
+	
+			strInstallCommand = split(objDictionary(strOS),"#")(3)
+			objWSHShell.Run "cmd.exe /c """ & strInstallCommand & """"
+			WriteOutput ("cmd.exe /c """ & strInstallCommand & """")
+		else
+			WriteOutput ("Parameters missing!")
+		End if
+		
+	End Sub
+		
+	Sub WriteOutput (locValue)
+		Output.Value = Output.Value & locValue & vbCr
+	End Sub
+	
+</script>  
+
+
+<html>
+   <head>
+		<title>EWDS MSEG 20250106</title>
+		<HTA:APPLICATION
+		APPLICATIONNAME="EWDS"
+		ID="EWDS"
+		VERSION="2.0"/>
+   </head>
+   <style>
+		body {font-family: Arial, Helvetica, sans-serif;}
+	
+		body{
+			background-color: #f2f2f2;
+		}
+		input[type=text]{
+			background-color: #ffffff;
+		}
+		.nm-button{
+		   font-weight: bold;
+		}
+	</style>
+	
+
+   <body>
+      	Username:<br>
+		<input type="text" value="Administrator" id="username" name="username" style="width:3in"><br><br>
+		Password:<br>
+		<input type="password" value="" id="password" name="password" style="width:3in"><br><br>
+		<input type="button" class="nm-button" value="Login" onClick="Login" ><br><br>
+		OS:<br>
+		<select size="1" name="OS" onChange="ListName" style="width:4in"></select><br><br>
+		Name:<br>
+		<select size="1" name="ComputerName" style="width:4in"></select><br><br>
+		<input type="button" class="nm-button" value="Install" onClick="Install"><br><br>
+		Log:<br>
+		<textarea id="Log" name="output" style="height:1.9in ;width:5.5in"></textarea>
+	</body>
+</html>
