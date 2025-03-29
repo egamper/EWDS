@@ -50,8 +50,15 @@ REM https://support.microsoft.com/it-it/surface/download-di-driver-e-firmware-pe
 dism /image:"C:\temp\WinPE-v2402\WinPE-AMD64" /Add-Driver /driver:"C:\temp\Drivers\NIC"
 
 powershell.exe -command  Invoke-WebRequest -Uri "https://deploymentresearch.com/DRFiles/ADSI_WINPE10_Plugin.zip" -OutFile "C:\temp\ADSI_WINPE10_Plugin.zip"
-powershell.exe -command  Expand-Archive -Path "C:\temp\ADSI_WINPE10_Plugin.zip" -DestinationPath "C:\temp\ADSI-v10-1809"
-dism /image:"C:\temp\WinPE-v2402\WinPE-AMD64" /Add-Driver /driver:"c:\temp\ADSI-v10-1809\ADSIx64\ADSIx64.inf" /forceunsigned
+powershell.exe -command  Expand-Archive -Path "C:\temp\ADSI_WINPE10_Plugin.zip" -DestinationPath "C:\temp\ADSI"
+copy /Y C:\Windows\System32\adsldp.dll C:\temp\ADSI\ADSIx64\
+copy /Y C:\Windows\System32\adsmsext.dll C:\temp\ADSI\ADSIx64\
+copy /Y C:\Windows\System32\adsnt.dll C:\temp\ADSI\ADSIx64\
+copy /Y C:\Windows\System32\mscoree.dll C:\temp\ADSI\ADSIx64\
+copy /Y C:\Windows\System32\mscorier.dll C:\temp\ADSI\ADSIx64\
+copy /Y C:\Windows\System32\mscories.dll C:\temp\ADSI\ADSIx64\
+
+dism /image:"C:\temp\WinPE-v2402\WinPE-AMD64" /Add-Driver /driver:"c:\temp\ADSI\ADSIx64\ADSIx64.inf" /forceunsigned
 
 md C:\temp\WinPE-v2402\WinPE-AMD64\EWDS
 
