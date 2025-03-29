@@ -4,11 +4,13 @@ REM Download and install ADK and WINPE AddOn
 REM https://www.deploymentresearch.com/adding-adsi-support-for-winpe-10/
 
 powershell.exe -command  Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+refreshenv
 
 powershell.exe -command  choco install windows-adk --force -y --acceptlicense
 powershell.exe -command  choco install windows-adk-winpe --force -y --acceptlicense
 powershell.exe -command  choco install git.install --force -y --acceptlicense
-powershell.exe -command  choco installrufus --force -y --acceptlicense
+powershell.exe -command  choco install rufus --force -y --acceptlicense
+refreshenv
 
 echo ------------------------------------------------------------
 echo ------------------------------------------------------------
