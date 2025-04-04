@@ -53,7 +53,7 @@
             <DriverPaths>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="1">
                     <Path>\\%DNSDOMAIN%\dfs\Software\EWDS\Drivers\All\x64\</Path>
-                </PathAndCredentials>            <DriverPaths>
+                </PathAndCredentials>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="2">
                     <Path>\\%DNSDOMAIN%\dfs\Software\EWDS\Drivers\%MODEL%\x64\</Path>
                 </PathAndCredentials>
