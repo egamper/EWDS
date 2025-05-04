@@ -21,6 +21,8 @@ echo ------------------------------------------------------------
 
 rd "C:\temp\WinPE-v2402" /S /Q
 md C:\temp
+md C:\temp\Drivers\NIC
+md C:\temp\Drivers\Storage
 md C:\temp\WinPE-v2402
 md C:\temp\WinPE-v2402\WinPE-AMD64
 
@@ -48,6 +50,7 @@ REM https://docs.microsoft.com/en-us/surface/enable-surface-keyboard-for-windows
 REM https://support.microsoft.com/it-it/surface/download-di-driver-e-firmware-per-surface-09bb2e09-2a4b-cb69-0951-078a7739e120 All drivers Surface
 
 dism /image:"C:\temp\WinPE-v2402\WinPE-AMD64" /Add-Driver /driver:"C:\temp\Drivers\NIC"
+dism /image:"C:\temp\WinPE-v2402\WinPE-AMD64" /Add-Driver /driver:"C:\temp\Drivers\Storage"
 
 powershell.exe -command  Invoke-WebRequest -Uri "https://deploymentresearch.com/DRFiles/ADSI_WINPE10_Plugin.zip" -OutFile "C:\temp\ADSI_WINPE10_Plugin.zip"
 powershell.exe -command  Expand-Archive -Path "C:\temp\ADSI_WINPE10_Plugin.zip" -DestinationPath "C:\temp\ADSI"
