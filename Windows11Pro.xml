@@ -58,6 +58,11 @@
                 <ProtectYourPC>1</ProtectYourPC>
                 <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
                 <HideEULAPage>true</HideEULAPage>
+		        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+                <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+		        <SkipMachineOOBE>true</SkipMachineOOBE>
+                <SkipUserOOBE>true</SkipUserOOBE>
             </OOBE>
             <UserAccounts>
                 <AdministratorPassword>
@@ -101,3 +106,4 @@
     </settings>
     <cpi:offlineImage cpi:source="wim:c:/temp/win/sources/install.wim#Windows 10" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>
+
